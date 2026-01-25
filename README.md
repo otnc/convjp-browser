@@ -9,6 +9,11 @@
 
 ### 推奨: UMD
 
+URL:
+```
+https://unpkg.com/convjp-browser@latest/dist/main.umd.js
+```
+
 > [!WARNING]
 > UMD では default と named が併存するため、ブラウザからは `convjp.encode` のような **named エクスポート** を使うことを推奨します。
 
