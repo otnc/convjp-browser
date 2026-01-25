@@ -13,7 +13,7 @@ Node.js 環境の軽量版はこちら: [convjp](https://www.npmjs.com/package/c
 ```html
 <script src="https://unpkg.com/convjp-browser@latest/dist/main.umd.js"></script>
 <script>
-  const input = 'もぺもぺ';
+  const input = "もぺもぺ";
   const encoded = convjp.encode(input);
   const decoded = mojibake.decode(encoded);
   console.log(encoded); // '繧ゅ⊆繧ゅ⊆'

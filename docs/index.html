@@ -7,121 +7,176 @@
   <body>
     <h1>convjp-browser UMD demo</h1>
 
-    <div style="max-width:800px;margin:0 auto;display:flex;flex-direction:column;gap:12px;">
+    <div
+      style="
+        max-width: 800px;
+        margin: 0 auto;
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+      "
+    >
       <label for="inputText"><strong>入力 (UTF-8)</strong></label>
-      <textarea id="inputText" rows="3" style="width:100%;font-size:16px;">もぺもぺ</textarea>
+      <textarea id="inputText" rows="3" style="width: 100%; font-size: 16px">
+もぺもぺ</textarea
+      >
 
-      <div style="display:flex;gap:8px;align-items:center;">
+      <div style="display: flex; gap: 8px; align-items: center">
         <button id="encodeBtn">Encode →</button>
         <button id="roundtripBtn">Encode → Decode</button>
         <button id="clearBtn">Clear</button>
-        <div id="status" style="margin-left:12px;color:#b00"></div>
+        <div id="status" style="margin-left: 12px; color: #b00"></div>
       </div>
 
-      <label for="encodedText"><strong>エンコード結果（garbled: Shift_JIS として解釈した結果の文字列）</strong></label>
-      <textarea id="encodedText" rows="3" style="width:100%;font-size:16px;"></textarea>
+      <label for="encodedText"
+        ><strong
+          >エンコード結果（garbled: Shift_JIS
+          として解釈した結果の文字列）</strong
+        ></label
+      >
+      <textarea
+        id="encodedText"
+        rows="3"
+        style="width: 100%; font-size: 16px"
+      ></textarea>
 
-      <div style="display:flex;gap:8px;align-items:center;">
+      <div style="display: flex; gap: 8px; align-items: center">
         <button id="decodeBtn">Decode →</button>
       </div>
 
-      <label for="decodedText"><strong>デコード結果 (UTF-8 復元)</strong></label>
-      <textarea id="decodedText" rows="3" style="width:100%;font-size:16px;" readonly></textarea>
+      <label for="decodedText"
+        ><strong>デコード結果 (UTF-8 復元)</strong></label
+      >
+      <textarea
+        id="decodedText"
+        rows="3"
+        style="width: 100%; font-size: 16px"
+        readonly
+      ></textarea>
 
       <hr />
 
-      <p>注意: このページは <code>docs/main.umd.js</code> にある UMD バンドルを利用します。ブラウザのコンソールに状態を出力します。</p>
+      <p>
+        注意: このページは <code>docs/main.umd.js</code> にある UMD
+        バンドルを利用します。ブラウザのコンソールに状態を出力します。
+      </p>
     </div>
 
     <script src="./main.umd.js"></script>
     <script>
       (function () {
-        const inputEl = document.getElementById('inputText')
-        const encEl = document.getElementById('encodedText')
-        const decEl = document.getElementById('decodedText')
-        const statusEl = document.getElementById('status')
-        const encodeBtn = document.getElementById('encodeBtn')
-        const decodeBtn = document.getElementById('decodeBtn')
-        const roundtripBtn = document.getElementById('roundtripBtn')
-        const clearBtn = document.getElementById('clearBtn')
+        const inputEl = document.getElementById("inputText");
+        const encEl = document.getElementById("encodedText");
+        const decEl = document.getElementById("decodedText");
+        const statusEl = document.getElementById("status");
+        const encodeBtn = document.getElementById("encodeBtn");
+        const decodeBtn = document.getElementById("decodeBtn");
+        const roundtripBtn = document.getElementById("roundtripBtn");
+        const clearBtn = document.getElementById("clearBtn");
 
         function conv() {
-          return (window.convjp || window.convjpModule || null)
+          return window.convjp || window.convjpModule || null;
         }
 
         function setStatus(msg, isError) {
-          statusEl.textContent = msg || ''
-          statusEl.style.color = isError ? '#b00' : '#060'
+          statusEl.textContent = msg || "";
+          statusEl.style.color = isError ? "#b00" : "#060";
         }
 
         function ensureConv() {
-          const c = conv()
-          if (!c || typeof c.encode !== 'function' || typeof c.decode !== 'function') {
-            setStatus('convjp UMD が見つかりません。docs/main.umd.js が読み込まれているか確認してください。', true)
-            return null
+          const c = conv();
+          if (
+            !c ||
+            typeof c.encode !== "function" ||
+            typeof c.decode !== "function"
+          ) {
+            setStatus(
+              "convjp UMD が見つかりません。docs/main.umd.js が読み込まれているか確認してください。",
+              true,
+            );
+            return null;
           }
-          setStatus('')
-          return c
+          setStatus("");
+          return c;
         }
 
-        encodeBtn.addEventListener('click', () => {
-          const c = ensureConv(); if (!c) return
+        encodeBtn.addEventListener("click", () => {
+          const c = ensureConv();
+          if (!c) return;
           try {
-            const out = c.encode(String(inputEl.value || ''))
-            encEl.value = out
+            const out = c.encode(String(inputEl.value || ""));
+            encEl.value = out;
           } catch (e) {
-            setStatus('Encode エラー: ' + (e && e.message ? e.message : String(e)), true)
+            setStatus(
+              "Encode エラー: " + (e && e.message ? e.message : String(e)),
+              true,
+            );
           }
-        })
+        });
 
-        decodeBtn.addEventListener('click', () => {
-          const c = ensureConv(); if (!c) return
+        decodeBtn.addEventListener("click", () => {
+          const c = ensureConv();
+          if (!c) return;
           try {
-            const out = c.decode(String(encEl.value || ''))
-            decEl.value = out
+            const out = c.decode(String(encEl.value || ""));
+            decEl.value = out;
           } catch (e) {
-            setStatus('Decode エラー: ' + (e && e.message ? e.message : String(e)), true)
+            setStatus(
+              "Decode エラー: " + (e && e.message ? e.message : String(e)),
+              true,
+            );
           }
-        })
+        });
 
-        roundtripBtn.addEventListener('click', () => {
-          const c = ensureConv(); if (!c) return
+        roundtripBtn.addEventListener("click", () => {
+          const c = ensureConv();
+          if (!c) return;
           try {
-            const enc = c.encode(String(inputEl.value || ''))
-            encEl.value = enc
-            const dec = c.decode(enc)
-            decEl.value = dec
+            const enc = c.encode(String(inputEl.value || ""));
+            encEl.value = enc;
+            const dec = c.decode(enc);
+            decEl.value = dec;
           } catch (e) {
-            setStatus('Roundtrip エラー: ' + (e && e.message ? e.message : String(e)), true)
+            setStatus(
+              "Roundtrip エラー: " + (e && e.message ? e.message : String(e)),
+              true,
+            );
           }
-        })
+        });
 
-        clearBtn.addEventListener('click', () => {
-          inputEl.value = ''
-          encEl.value = ''
-          decEl.value = ''
-          setStatus('')
-        })
+        clearBtn.addEventListener("click", () => {
+          inputEl.value = "";
+          encEl.value = "";
+          decEl.value = "";
+          setStatus("");
+        });
 
         // Try an initial roundtrip (best-effort) if convjp available
-        window.addEventListener('load', () => {
-          const c = conv()
-          if (c && typeof c.encode === 'function' && typeof c.decode === 'function') {
+        window.addEventListener("load", () => {
+          const c = conv();
+          if (
+            c &&
+            typeof c.encode === "function" &&
+            typeof c.decode === "function"
+          ) {
             try {
-              const val = inputEl.value
-              const enc = c.encode(val)
-              encEl.value = enc
-              decEl.value = c.decode(enc)
-              setStatus('convjp が読み込まれているため初期実行を行いました。')
+              const val = inputEl.value;
+              const enc = c.encode(val);
+              encEl.value = enc;
+              decEl.value = c.decode(enc);
+              setStatus("convjp が読み込まれているため初期実行を行いました。");
             } catch (e) {
               // ignore initial failures
-              console.warn('Initial run failed', e)
+              console.warn("Initial run failed", e);
             }
           } else {
-            setStatus('UMD が読み込まれていません（docs/main.umd.js を確認）', true)
+            setStatus(
+              "UMD が読み込まれていません（docs/main.umd.js を確認）",
+              true,
+            );
           }
-        })
-      })()
+        });
+      })();
     </script>
   </body>
 </html>

@@ -6,136 +6,201 @@ try {
 } catch (e) {}
 const _staticIconv =
   (typeof iconv !== "undefined" && (iconv.default || iconv)) || null;
+
+// Helpers: normalize UTF-8 bytes, convert to Buffer when possible, and resolve encoders/decoders
+function toUtf8Bytes(str) {
+  if (typeof Buffer !== "undefined") {
+    try {
+      return Buffer.from(str, "utf8");
+    } catch (e) {}
+  }
+  if (typeof TextEncoder !== "undefined") {
+    try {
+      return new TextEncoder().encode(str);
+    } catch (e) {}
+  }
+  return null;
+}
+
+function toBufferIfPossible(b) {
+  try {
+    if (
+      typeof Buffer !== "undefined" &&
+      b &&
+      !(b instanceof Buffer) &&
+      (b instanceof Uint8Array || ArrayBuffer.isView(b))
+    )
+      return Buffer.from(b);
+  } catch (e) {}
+  return b;
+}
+
+function resolveIconv(decoderNeeded) {
+  try {
+    if (
+      _staticIconv &&
+      ((decoderNeeded && typeof _staticIconv.decode === "function") ||
+        (!decoderNeeded && typeof _staticIconv.encode === "function"))
+    )
+      return _staticIconv;
+  } catch (e) {}
+
+  if (_staticIconv && typeof _staticIconv.__require === "function") {
+    try {
+      let real = null;
+      try {
+        real = _staticIconv.__require();
+      } catch (e1) {}
+      try {
+        if (!real) real = _staticIconv.__require("iconv-lite");
+      } catch (e2) {}
+      if (
+        real &&
+        ((decoderNeeded && typeof real.decode === "function") ||
+          (!decoderNeeded && typeof real.encode === "function"))
+      )
+        return real;
+      if (
+        real &&
+        real.default &&
+        ((decoderNeeded && typeof real.default.decode === "function") ||
+          (!decoderNeeded && typeof real.default.encode === "function"))
+      )
+        return real.default;
+    } catch (e) {}
+  }
+
+  try {
+    if (typeof require === "function") {
+      const r = require("iconv-lite");
+      if (
+        r &&
+        ((decoderNeeded && typeof r.decode === "function") ||
+          (!decoderNeeded && typeof r.encode === "function"))
+      )
+        return r;
+      if (
+        r &&
+        r.default &&
+        ((decoderNeeded && typeof r.default.decode === "function") ||
+          (!decoderNeeded && typeof r.default.encode === "function"))
+      )
+        return r.default;
+    }
+  } catch (e) {}
+
+  return null;
+}
+
+function resolveEncodingJapanese() {
+  let enc = (typeof Encoding !== "undefined" && Encoding) || null;
+  if (enc && enc.default && typeof enc.default.convert === "function")
+    enc = enc.default;
+  if (
+    (!enc || typeof enc.convert !== "function") &&
+    typeof require === "function"
+  ) {
+    try {
+      const reqEnc = require("encoding-japanese");
+      if (reqEnc && typeof reqEnc.convert === "function") enc = reqEnc;
+      if (
+        !enc &&
+        reqEnc &&
+        reqEnc.default &&
+        typeof reqEnc.default.convert === "function"
+      )
+        enc = reqEnc.default;
+    } catch (e) {}
+  }
+  if (
+    (!enc || typeof enc.convert !== "function") &&
+    Encoding &&
+    typeof Encoding.__require === "function"
+  ) {
+    try {
+      const eReal = Encoding.__require();
+      if (eReal && typeof eReal.convert === "function") enc = eReal;
+      if (
+        !enc &&
+        eReal &&
+        eReal.default &&
+        typeof eReal.default.convert === "function"
+      )
+        enc = eReal.default;
+    } catch (e) {}
+  }
+  return enc && typeof enc.convert === "function" ? enc : null;
+}
+
 // encode: take the UTF-8 bytes of the input string and decode them AS Shift_JIS,
 // returning the resulting JavaScript string (a typical "mojibake" transform).
 export function encode(s) {
   const str = String(s);
+
+  // Try iconv-style decoder first (static or require)
   try {
-  } catch (e) {}
-
-  // Preferred static iconv path
-  if (_staticIconv && typeof _staticIconv.decode === "function") {
-    try {
-      const utf8Buf =
-        typeof Buffer !== "undefined"
-          ? Buffer.from(str, "utf8")
-          : typeof TextEncoder !== "undefined"
-            ? new TextEncoder().encode(str)
-            : null;
-      let b = utf8Buf;
+    const impl = resolveIconv(true);
+    if (impl) {
+      const utf8Buf = toUtf8Bytes(str);
+      const b = toBufferIfPossible(utf8Buf);
       try {
-        if (
-          typeof Buffer !== "undefined" &&
-          b &&
-          !(b instanceof Buffer) &&
-          (b instanceof Uint8Array || ArrayBuffer.isView(b))
-        )
-          b = Buffer.from(b);
-      } catch (e) {}
-      const garbled = _staticIconv.decode(b, "shift_jis");
-
-      // Return the garbled string only (raw bytes / base64 are no longer exposed)
-      try {
+        const garbled = impl.decode(b, "shift_jis");
         return garbled;
       } catch (e) {
-        /* static encode path threw (suppressed) */
-      }
-    } catch (e) {
-      console.error(
-        "DEBUG encode: static path threw",
-        e && e.stack ? e.stack : e,
-      );
-    }
-  }
-
-  // Runtime require fallback
-  try {
-    if (typeof require === "function") {
-      const r = require("iconv-lite");
-      if (r && typeof r.decode === "function") {
-        try {
-          const utf8Buf =
-            typeof Buffer !== "undefined"
-              ? Buffer.from(str, "utf8")
-              : typeof TextEncoder !== "undefined"
-                ? new TextEncoder().encode(str)
-                : null;
-          let b = utf8Buf;
-          try {
-            if (
-              typeof Buffer !== "undefined" &&
-              b &&
-              !(b instanceof Buffer) &&
-              (b instanceof Uint8Array || ArrayBuffer.isView(b))
-            )
-              b = Buffer.from(b);
-          } catch (e) {}
-          const garbled = r.decode(b, "shift_jis");
-          return garbled;
-        } catch (e) {
-          return garbled;
-        }
+        console.error(
+          "DEBUG encode: static path threw",
+          e && e.stack ? e.stack : e,
+        );
       }
     }
   } catch (e) {}
 
   // Fallback using TextDecoder('shift_jis') if available
   try {
-    if (typeof TextEncoder !== 'undefined' && typeof TextDecoder !== 'undefined') {
-      const bytes = new TextEncoder().encode(str)
+    if (
+      typeof TextEncoder !== "undefined" &&
+      typeof TextDecoder !== "undefined"
+    ) {
+      const bytes = new TextEncoder().encode(str);
       try {
-        const garbled = new TextDecoder('shift_jis').decode(bytes)
-        try { return garbled } catch (e) { return garbled }
+        const garbled = new TextDecoder("shift_jis").decode(bytes);
+        return garbled;
       } catch (e) {}
     }
   } catch (e) {}
 
-  // Fallback using encoding-japanese: interpret the UTF-8 bytes as SJIS bytes and make a string
+  // Fallback using encoding-japanese
   try {
-    let enc = (typeof Encoding !== 'undefined' && Encoding) || null
-    if (enc && enc.default && typeof enc.default.convert === 'function') enc = enc.default
-    if ((!enc || typeof enc.convert !== 'function') && typeof require === 'function') {
-      try {
-        const reqEnc = require('encoding-japanese')
-        if (reqEnc && typeof reqEnc.convert === 'function') enc = reqEnc
-        if (!enc && reqEnc && reqEnc.default && typeof reqEnc.default.convert === 'function') enc = reqEnc.default
-      } catch (e) {}
-    }
-    if ((!enc || typeof enc.convert !== 'function') && Encoding && typeof Encoding.__require === 'function') {
-      try {
-        const eReal = Encoding.__require()
-        if (eReal && typeof eReal.convert === 'function') enc = eReal
-        if (!enc && eReal && eReal.default && typeof eReal.default.convert === 'function') enc = eReal.default
-      } catch (e) {}
-    }
-
-    if (enc && typeof enc.convert === 'function') {
-      const utf8Buf = (typeof Buffer !== 'undefined') ? Buffer.from(str, 'utf8') : (typeof TextEncoder !== 'undefined' ? new TextEncoder().encode(str) : null)
-      const arr = (utf8Buf && typeof utf8Buf.slice === 'function') ? Array.prototype.slice.call(utf8Buf) : (utf8Buf ? Array.from(utf8Buf) : [])
-      // Interpret these bytes as SJIS and convert to Unicode string
-      const garbled = enc.convert(arr, { from: 'SJIS', to: 'UNICODE', type: 'string' })
-      return garbled
+    const enc = resolveEncodingJapanese();
+    if (enc) {
+      const utf8Buf = toUtf8Bytes(str);
+      const arr =
+        utf8Buf && typeof utf8Buf.slice === "function"
+          ? Array.prototype.slice.call(utf8Buf)
+          : utf8Buf
+            ? Array.from(utf8Buf)
+            : [];
+      const garbled = enc.convert(arr, {
+        from: "SJIS",
+        to: "UNICODE",
+        type: "string",
+      });
+      return garbled;
     }
   } catch (e) {}
 
-  // As a last resort, return the original string
   return str;
 }
 
 export function decode(bytes) {
   if (bytes == null) return "";
-  // If the encoded value is an object with rawBase64, use it directly (structured-clone safe)
   if (bytes && typeof bytes === "object") {
     if (bytes.rawBase64) {
-      // rawBase64 is explicitly unsupported by this API by design
       throw new Error("rawBase64 is not supported by this API");
     }
     if (bytes.encoded) {
       try {
-        const g = String(bytes.encoded);
-        if (g) {
-          /* continue with garbled */
-        }
+        String(bytes.encoded);
       } catch (e) {}
     }
   }
@@ -145,70 +210,11 @@ export function decode(bytes) {
       ? String(bytes.encoded)
       : String(bytes);
 
-  // DEBUG: log which branch we're about to take
+  // Try iconv-style encoder
   try {
-  } catch (e) {}
-
-  // Try to resolve an iconv implementation that can encode to Shift_JIS
-  let iconvImpl = null;
-  try {
-    if (_staticIconv && typeof _staticIconv.encode === "function") {
-      iconvImpl = _staticIconv;
-    }
-  } catch (e) {}
-
-  // If static iconv didn't expose encode, try to reach its internal implementation
-  if (
-    !iconvImpl &&
-    _staticIconv &&
-    typeof _staticIconv.__require === "function"
-  ) {
-    try {
-      let real = null;
-      try {
-        real = _staticIconv.__require();
-      } catch (e1) {
-        /* ignore */
-      }
-      try {
-        if (!real) real = _staticIconv.__require("iconv-lite");
-      } catch (e2) {
-        /* ignore */
-      }
-      if (real && typeof real.encode === "function") iconvImpl = real;
-      if (
-        !iconvImpl &&
-        real &&
-        real.default &&
-        typeof real.default.encode === "function"
-      )
-        iconvImpl = real.default;
-    } catch (e) {
-      console.error("decode: __require() failed", e && e.stack ? e.stack : e);
-    }
-  }
-
-  // Try Node-style require as a last resort (may not be available in browser UMD runtime)
-  if (!iconvImpl && typeof require === "function") {
-    try {
-      const r = require("iconv-lite");
-      if (r && typeof r.encode === "function") iconvImpl = r;
-      if (
-        !iconvImpl &&
-        r &&
-        r.default &&
-        typeof r.default.encode === "function"
-      )
-        iconvImpl = r.default;
-    } catch (e) {
-      // ignore
-    }
-  }
-
-  if (iconvImpl) {
-    try {
-      const sjisBuf = iconvImpl.encode(garbled, "shift_jis");
-
+    const impl = resolveIconv(false);
+    if (impl) {
+      const sjisBuf = impl.encode(garbled, "shift_jis");
       if (typeof Buffer !== "undefined")
         return Buffer.from(sjisBuf).toString("utf8");
       if (typeof TextDecoder !== "undefined")
@@ -218,64 +224,16 @@ export function decode(bytes) {
       } catch (e) {
         return "";
       }
-    } catch (e) {
-      console.error(
-        "decode: iconvImpl.encode threw",
-        e && e.stack ? e.stack : e,
-      );
     }
+  } catch (e) {
+    console.error("decode: iconvImpl.encode threw", e && e.stack ? e.stack : e);
   }
 
-  // Fallback: try encoding-japanese in several shapes (default export or direct)
+  // Fallback: encoding-japanese
   try {
-    let enc = (typeof Encoding !== "undefined" && Encoding) || null;
-    if (enc && enc.default && typeof enc.default.convert === "function")
-      enc = enc.default;
-    // Try Node-style require
-    if (
-      (!enc || typeof enc.convert !== "function") &&
-      typeof require === "function"
-    ) {
-      try {
-        const reqEnc = require("encoding-japanese");
-        if (reqEnc && typeof reqEnc.convert === "function") enc = reqEnc;
-        if (
-          !enc &&
-          reqEnc &&
-          reqEnc.default &&
-          typeof reqEnc.default.convert === "function"
-        )
-          enc = reqEnc.default;
-      } catch (e) {}
-    }
-
-    // Try the bundler-provided __require() if present (some UMD shapes wrap internals)
-    if (
-      (!enc || typeof enc.convert !== "function") &&
-      Encoding &&
-      typeof Encoding.__require === "function"
-    ) {
-      try {
-        const eReal = Encoding.__require();
-        if (eReal && typeof eReal.convert === "function") enc = eReal;
-        if (
-          !enc &&
-          eReal &&
-          eReal.default &&
-          typeof eReal.default.convert === "function"
-        )
-          enc = eReal.default;
-      } catch (e) {
-        console.error(
-          "decode: Encoding.__require() failed",
-          e && e.stack ? e.stack : e,
-        );
-      }
-    }
-
-    if (enc && typeof enc.convert === "function") {
+    const enc = resolveEncodingJapanese();
+    if (enc) {
       const arr = enc.convert(garbled, { to: "SJIS", type: "array" });
-
       const u8 = new Uint8Array(arr);
       if (typeof TextDecoder !== "undefined")
         return new TextDecoder("utf-8").decode(u8);
@@ -289,7 +247,6 @@ export function decode(bytes) {
     );
   }
 
-  // Fallback: best-effort - return provided string as-is
   try {
     return String(garbled);
   } catch (e) {
