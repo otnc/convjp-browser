@@ -12,9 +12,6 @@
       "require": "./dist/main.cjs.js"
     }
   },
-  "files": [
-    "dist"
-  ],
   "scripts": {
     "build": "vite build",
     "postbuild": "node scripts/copy-umd-to-docs.js",

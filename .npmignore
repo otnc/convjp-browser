@@ -1,0 +1,10 @@
+.github/
+docs/
+node_modules/
+scripts/
+src/
+test/
+.prettierignore
+.prettierrc.json
+jest.config.cjs
+vite.config.js

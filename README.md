@@ -30,6 +30,10 @@
 ```html
 <script type="module">
   import { encode, decode } from "/dist/main.es.js";
-  console.log(decode(encode("もぺもぺ")));
+  const input = "もぺもぺ";
+  const encoded = convjp.encode(input);
+  const decoded = mojibake.decode(encoded);
+  console.log(encoded); // '繧ゅ⊆繧ゅ⊆'
+  console.log(decoded); // 'もぺもぺ'
 </script>
 ```
