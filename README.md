@@ -23,7 +23,7 @@
 </script>
 ```
 
-バージョン指定: `https://unpkg.com/convjp-browser@1.0.0/dist/main.umd.js`
+バージョン指定の例: `https://unpkg.com/convjp-browser@1.0.0/dist/main.umd.js`
 
 ### 推奨: ESM
 
