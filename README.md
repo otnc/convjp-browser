@@ -1,6 +1,8 @@
 # convjp-browser
 
-ブラウザ(Web)向けの日本語用の文字化けエンコード・デコードライブラリ
+ブラウザ(Web)向けの日本語用の文字化けエンコード・デコードライブラリ  
+
+デモ: https://otoneko1102.github.io/convjp-browser
 
 > [!NOTE]
 > Node.js 環境の軽量版はこちら: [convjp](https://www.npmjs.com/package/convjp)
