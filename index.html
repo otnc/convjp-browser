@@ -1,0 +1,336 @@
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>convjp-browser — Quick tester</title>
+    <style>
+      body {
+        font-family:
+          system-ui,
+          -apple-system,
+          Segoe UI,
+          Roboto,
+          "Noto Sans JP",
+          Helvetica,
+          Arial;
+        max-width: 900px;
+        margin: 32px auto;
+        padding: 0 16px;
+      }
+      textarea {
+        width: 100%;
+        height: 120px;
+        font-size: 16px;
+        padding: 8px;
+        box-sizing: border-box;
+      }
+      button {
+        margin: 6px 6px 6px 0;
+        padding: 8px 12px;
+        font-size: 15px;
+      }
+      pre {
+        background: #f6f8fa;
+        padding: 12px;
+        border-radius: 6px;
+        white-space: pre-wrap;
+      }
+      .row {
+        display: flex;
+        gap: 12px;
+        align-items: center;
+      }
+      .status {
+        font-weight: 600;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>convjp-browser — テストページ</h1>
+    <p>
+      このページはローカルで直接開いて、簡単に <code>encode</code>/<code
+        >decode</code
+      >
+      の挙動を試すためのものです。
+    </p>
+
+    <p>
+      <strong>注:</strong> この UMD ビルドは upstream の
+      <code>convjp</code> を外部依存にしています。ブラウザで使う場合は先に
+      upstream の UMD を読み込むか、<code>window.convjpModule</code>
+      を設定してください。下の「Load upstream from CDN」ボタンで試せます。
+    </p>
+
+    <label for="input">入力文字列</label>
+    <textarea id="input">もぺもぺ</textarea>
+
+    <div class="row">
+      <button id="encodeBtn">Encode</button>
+      <button id="decodeBtn">Decode</button>
+      <button id="roundtripBtn">Roundtrip (encode → decode)</button>
+      <button id="loadUpstreamBtn">Load upstream from CDN</button>
+      <span class="status">Status: <span id="status">loading</span></span>
+    </div>
+
+    <!-- Local file loader & fallback message shown when CDN attempts fail -->
+    <div id="upstreamControls" style="margin-top: 8px">
+      <input
+        id="uploadUpstreamInput"
+        type="file"
+        accept=".js"
+        style="display: inline-block"
+      />
+      <button id="loadLocalUpstreamBtn">Load local upstream file</button>
+      <span
+        id="upstreamFallback"
+        style="display: none; color: #c0392b; margin-left: 8px"
+        >CDN からのロードに失敗しました。ファイルを選択して「Load local upstream
+        file」ボタンを押すか、ネットワークを確認してください。</span
+      >
+    </div>
+
+    <h3>出力</h3>
+    <pre id="output">(nothing yet)</pre>
+
+    <hr />
+    <p>読み込まれるスクリプト:</p>
+    <ul>
+      <li>
+        <code>./dist/main.umd.js</code> (this package UMD build; expects a
+        global convjpModule)
+      </li>
+      <li>
+        Upstream <code>convjp</code> UMD (optional; if missing, use the "Load
+        upstream from CDN" button)
+      </li>
+    </ul>
+
+    <!-- Package UMD will be loaded dynamically so upstream can be provided first -->
+    <div style="margin-top: 8px">
+      <button id="loadPackageBtn">Load package script (convjp-browser)</button>
+    </div>
+    <script>
+      let packageLoaded = false;
+      function loadPackageScript() {
+        if (packageLoaded) return;
+        const s = document.createElement("script");
+        s.src = "./dist/main.umd.js";
+        s.onload = function () {
+          packageLoaded = true;
+          updateStatus();
+          alert("Loaded convjp-browser package (./dist/main.umd.js)");
+        };
+        s.onerror = function () {
+          alert(
+            "Failed to load ./dist/main.umd.js. Run `npm run build` to create it.",
+          );
+        };
+        document.head.appendChild(s);
+      }
+      document
+        .getElementById("loadPackageBtn")
+        .addEventListener("click", loadPackageScript);
+      function loadPackageIfUpstreamReady() {
+        if (packageLoaded) return;
+        if (
+          window.convjpModule &&
+          typeof window.convjpModule.encode === "function"
+        )
+          loadPackageScript();
+      }
+    </script>
+
+    <script>
+      function lib() {
+        // Prefer the named global that this UMD exposes, then upstream module
+        if (window.convjp && typeof window.convjp.encode === "function")
+          return window.convjp;
+        if (
+          window.convjpModule &&
+          typeof window.convjpModule.encode === "function"
+        )
+          return window.convjpModule;
+        // some UMDs attach to a different global; try common names
+        if (window.convjpShim && typeof window.convjpShim.encode === "function")
+          return window.convjpShim;
+        return null;
+      }
+
+      function updateStatus() {
+        const ok = lib() ? "ready" : "missing";
+        document.getElementById("status").textContent = ok;
+      }
+
+      function safeCall(fn, arg) {
+        try {
+          return fn(arg);
+        } catch (e) {
+          return "Error: " + (e && e.message ? e.message : String(e));
+        }
+      }
+
+      function mapResolverErrorToMessage(res) {
+        const errMarker = "Could not resolve convjp module shape";
+        if (typeof res === "string" && res.indexOf(errMarker) !== -1) {
+          return "CDN からのロードに失敗しました。ファイルを選択して「Load local upstream file」ボタンを押すか、ネットワークを確認してください.";
+        }
+        return res;
+      }
+
+      document
+        .getElementById("encodeBtn")
+        .addEventListener("click", function () {
+          const L = lib();
+          if (!L)
+            return alert(
+              "convjp が読み込まれていません。まず上の「Load upstream from CDN」を実行するか、ページ上で window.convjpModule を設定してください。",
+            );
+          const v = document.getElementById("input").value;
+          const res = safeCall(L.encode, v);
+          document.getElementById("output").textContent =
+            mapResolverErrorToMessage(res);
+        });
+
+      document
+        .getElementById("decodeBtn")
+        .addEventListener("click", function () {
+          const L = lib();
+          if (!L) return alert("convjp が読み込まれていません。");
+          const v = document.getElementById("input").value;
+          const res = safeCall(L.decode, v);
+          document.getElementById("output").textContent =
+            mapResolverErrorToMessage(res);
+        });
+
+      document
+        .getElementById("roundtripBtn")
+        .addEventListener("click", function () {
+          const L = lib();
+          if (!L) return alert("convjp が読み込まれていません。");
+          const v = document.getElementById("input").value;
+          const enc = safeCall(L.encode, v);
+          const dec = safeCall(L.decode, enc);
+          const encOut = mapResolverErrorToMessage(enc);
+          const decOut = mapResolverErrorToMessage(dec);
+          document.getElementById("output").textContent =
+            "encoded: " + encOut + "\n\ndecoded: " + decOut;
+        });
+
+      function tryLoadUpstream(silent) {
+        const urls = [
+          "https://unpkg.com/convjp@latest/dist/convjp.umd.js",
+          "https://unpkg.com/convjp@latest/dist/main.umd.js",
+          "https://unpkg.com/convjp@latest/dist/index.umd.js",
+        ];
+        let i = 0;
+        function tryNext() {
+          if (i >= urls.length) {
+            // Show the fallback UI to allow local file loading
+            try {
+              document.getElementById("upstreamFallback").style.display =
+                "inline";
+            } catch (e) {}
+            try {
+              document.getElementById("uploadUpstreamInput").focus();
+            } catch (e) {}
+            updateStatus();
+            alert(
+              "CDN からのロードに失敗しました。ファイルを選択して「Load local upstream file」ボタンを押すか、ネットワークを確認してください。",
+            );
+            return;
+          }
+          const url = urls[i++];
+          const s = document.createElement("script");
+          s.src = url;
+          s.onload = function () {
+            // Normalize: if the loaded script attached to window.convjp, also set window.convjpModule
+            if (window.convjp && typeof window.convjp.encode === "function")
+              window.convjpModule = window.convjpModule || window.convjp;
+            // Hide fallback when CDN succeeded
+            try {
+              document.getElementById("upstreamFallback").style.display =
+                "none";
+            } catch (e) {}
+            updateStatus();
+            // If upstream is ready, auto-load this package so it can initialize against the upstream
+            if (typeof loadPackageIfUpstreamReady === "function")
+              loadPackageIfUpstreamReady();
+            if (!silent)
+              alert(
+                "Loaded upstream convjp from: " +
+                  url +
+                  "\nStatus: " +
+                  document.getElementById("status").textContent,
+              );
+          };
+          s.onerror = function () {
+            tryNext();
+          };
+          document.head.appendChild(s);
+        }
+        tryNext();
+      }
+      document
+        .getElementById("loadUpstreamBtn")
+        .addEventListener("click", function () {
+          tryLoadUpstream(false);
+        });
+
+      // Local file loader for upstream UMD
+      document
+        .getElementById("loadLocalUpstreamBtn")
+        .addEventListener("click", function () {
+          const inputEl = document.getElementById("uploadUpstreamInput");
+          if (!inputEl.files || inputEl.files.length === 0) {
+            alert("Upstream ファイルを選択してください");
+            return;
+          }
+          const file = inputEl.files[0];
+          const reader = new FileReader();
+          reader.onload = function (e) {
+            const code = e.target.result;
+            const s = document.createElement("script");
+            s.textContent = code;
+            document.head.appendChild(s);
+            // Normalize & notify
+            if (window.convjp && typeof window.convjp.encode === "function")
+              window.convjpModule = window.convjpModule || window.convjp;
+            try {
+              document.getElementById("upstreamFallback").style.display =
+                "none";
+            } catch (e) {}
+            updateStatus();
+            if (typeof loadPackageIfUpstreamReady === "function")
+              loadPackageIfUpstreamReady();
+            alert("Loaded upstream from local file: " + file.name);
+          };
+          reader.onerror = function () {
+            alert("ファイルの読み込みに失敗しました");
+          };
+          reader.readAsText(file, "utf-8");
+        });
+
+      // Update status shortly after load (give the UMD script a moment)
+      setTimeout(updateStatus, 200);
+
+      // Auto-attempt to load upstream on first open (silent). If upstream is already present,
+      // auto-load the package; otherwise try CDN silently.
+      document.addEventListener("DOMContentLoaded", function () {
+        updateStatus();
+        if (
+          window.convjpModule &&
+          typeof window.convjpModule.encode === "function"
+        ) {
+          try {
+            loadPackageIfUpstreamReady();
+          } catch (e) {}
+        } else {
+          try {
+            tryLoadUpstream(true);
+          } catch (e) {}
+        }
+      });
+    </script>
+  </body>
+</html>

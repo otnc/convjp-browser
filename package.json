@@ -1,0 +1,64 @@
+{
+  "name": "convjp-browser",
+  "version": "1.0.0",
+  "description": "ブラウザ(Web)向けの日本語用の文字化けエンコード・デコードライブラリ",
+  "main": "dist/main.cjs.js",
+  "module": "dist/main.es.js",
+  "browser": "dist/main.umd.js",
+  "exports": {
+    ".": {
+      "browser": "./dist/main.umd.js",
+      "import": "./dist/main.es.js",
+      "require": "./dist/main.cjs.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "vite build",
+    "postbuild": "node scripts/copy-umd-to-docs.js",
+    "clean": "rimraf dist",
+    "prepublishOnly": "npm run build",
+    "test": "npm run build && jest",
+    "test:umd": "node test/test-umd.js",
+    "test:jest": "jest",
+    "format": "prettier --write ."
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/otoneko1102/convjp-browser.git"
+  },
+  "keywords": [
+    "mojibake",
+    "encode",
+    "decode",
+    "joke",
+    "jp",
+    "japan",
+    "japanese",
+    "shift_jis",
+    "utf-8"
+  ],
+  "author": "otoneko.",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/otoneko1102/convjp-browser/issues"
+  },
+  "homepage": "https://github.com/otoneko1102/convjp-browser#readme",
+  "dependencies": {
+    "encoding-japanese": "^2.2.0",
+    "iconv-lite": "^0.7.2"
+  },
+  "devDependencies": {
+    "@rollup/plugin-commonjs": "^29.0.0",
+    "@rollup/plugin-node-resolve": "^16.0.3",
+    "jest": "^30.2.0",
+    "jest-environment-jsdom": "^30.2.0",
+    "jsdom": "^27.4.0",
+    "prettier": "^3.8.1",
+    "rimraf": "^6.1.2",
+    "rollup-plugin-polyfill-node": "^0.13.0",
+    "vite": "^7.3.1"
+  }
+}
